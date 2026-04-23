@@ -1,0 +1,65 @@
+name: Build & push OIDC image
+
+on:
+  push:
+    branches: [oidc]
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository_owner }}/webmail-oidc
+  UPSTREAM: bulwarkmail/webmail
+
+jobs:
+  sync-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: oidc
+          fetch-depth: 0
+
+      - name: Sync with upstream
+        if: github.event_name == 'schedule'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/${{ env.UPSTREAM }}.git || true
+          DEFAULT_BRANCH=$(git ls-remote --symref upstream HEAD | awk '/^ref:/ {sub("refs/heads/", "", $2); print $2; exit}')
+          git fetch upstream "$DEFAULT_BRANCH"
+          if git rebase "upstream/$DEFAULT_BRANCH"; then
+            git push origin oidc --force-with-lease
+          else
+            git rebase --abort
+            echo "::warning::Rebase failed — manual intervention needed"
+          fi
+
+      - name: Lowercase image name
+        run: echo "IMAGE_LC=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Detect version
+        id: version
+        run: |
+          VERSION=$(git tag --list 'v*.*.*' '[0-9]*.*.*' --sort=-version:refname 2>/dev/null | head -1 | sed 's/^v//')
+          [ -z "$VERSION" ] && VERSION="latest"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_LC }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_LC }}:latest
