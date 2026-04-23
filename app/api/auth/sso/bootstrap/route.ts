@@ -12,8 +12,12 @@ export async function GET(req: NextRequest) {
   // interne (ex: 0.0.0.0:3000) quand Next.js est derrière un proxy, ce qui
   // génère un redirect_uri invalide pour Zitadel.
   const origin = process.env.BASE_URL || req.nextUrl.origin;
-  const redirectUri = `${origin}/api/auth/sso/complete`;
-  const locale = req.nextUrl.searchParams.get('locale') || undefined;
+  const locale = req.nextUrl.searchParams.get('locale') || 'en';
+  // Le callback Zitadel pointe vers la page Next.js /{locale}/auth/callback
+  // qui appelle loginWithServerSso(code, state) côté client. Cela permet au
+  // store Zustand de récupérer l'access_token et d'initialiser le JMAP client.
+  // Le endpoint /api/auth/sso/complete est appelé DEPUIS cette page (POST).
+  const redirectUri = `${origin}/${locale}/auth/callback`;
 
   try {
     const result = await buildSsoAuthorizeUrl(redirectUri, locale);
