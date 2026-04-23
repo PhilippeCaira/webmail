@@ -8,7 +8,10 @@ import { buildSsoAuthorizeUrl } from '@/lib/auth/sso-start';
  * interne vers /api/auth/sso/start qui échouait via Traefik en self-origin.
  */
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  // BASE_URL est l'URL publique (Traefik). nextUrl.origin donne l'URL
+  // interne (ex: 0.0.0.0:3000) quand Next.js est derrière un proxy, ce qui
+  // génère un redirect_uri invalide pour Zitadel.
+  const origin = process.env.BASE_URL || req.nextUrl.origin;
   const redirectUri = `${origin}/api/auth/sso/complete`;
   const locale = req.nextUrl.searchParams.get('locale') || undefined;
 
