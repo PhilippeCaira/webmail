@@ -94,6 +94,7 @@ export async function GET(request: NextRequest) {
       302,
     );
   }
-  // Redirect vers la home app; les cookies session/refresh_token sont déjà set.
-  return NextResponse.redirect(new URL('/', process.env.BASE_URL || request.nextUrl.origin), 302);
+  // Redirect vers la home locale (pas `/` racine qui est re-interceptée
+  // par le redirectregex Traefik bulwark-sso-login → boucle).
+  return NextResponse.redirect(new URL('/en/', process.env.BASE_URL || request.nextUrl.origin), 302);
 }
