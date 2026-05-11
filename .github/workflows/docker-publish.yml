@@ -30,10 +30,12 @@ jobs:
       - name: Set image name
         id: set
         run: |
+          # GHCR exige le repo en minuscules (PhilippeCaira -> philippecaira)
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "image_name=ghcr.io/${{ github.repository }}-beta" >> $GITHUB_OUTPUT
+            echo "image_name=ghcr.io/${REPO_LC}-beta" >> $GITHUB_OUTPUT
           else
-            echo "image_name=ghcr.io/${{ github.repository }}-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "image_name=ghcr.io/${REPO_LC}-${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
   build:
